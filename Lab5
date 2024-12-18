@@ -1,13 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Net.NetworkInformation;
+using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace _5Laba
 {
     internal class Program
+
     {
         static Random rand = new Random();
         #region Функции для ввода и проверки ввода
@@ -88,12 +95,19 @@ namespace _5Laba
         }
         public static int[,] AddKMoreRandomly(int[,] matrix)
         {
-            int K = ReadIntAndCheckDiapason("Введите кол-во строк на добавление", 1, 10);//Обязательно поменяй чтобы не 10 было а 10-длина
+            //int K = ReadIntAndCheckDiapason($"Введите кол-во строк на добавление(от 1 до {10-(matrix.Length)})", 1, 10-(matrix.Length));//Обязательно поменяй чтобы не 10 было а 10-длина
             int[,] newMatrix = null;
             int newCols = 0;
             int newRows = 0;
-            if (!IsMatrixEmpty(matrix))
+            if (matrix.GetLength(0) > 9)
             {
+                Console.WriteLine("В матрицу нельзя добавить больше строк");
+                return matrix;
+            }
+            if (!IsMatrixEmpty(matrix))
+
+            {
+                int K = ReadIntAndCheckDiapason($"Введите кол-во строк на добавление(от 1 до {10 - (matrix.GetLength(0))})", 1, 10 - (matrix.GetLength(0)));//
                 newRows = matrix.GetLength(0) + K;
                 newCols = matrix.GetLength(1);
                 newMatrix = new int[newRows, newCols];
@@ -108,20 +122,63 @@ namespace _5Laba
                         newMatrix[i + K, j] = matrix[i, j];
                 }
             }
-                
+
             else
             {
+                int K = ReadIntAndCheckDiapason($"Введите кол-во строк на добавление(от 1 до {10})", 1, 10);
                 newRows = K;
                 newCols = ReadIntAndCheckDiapason("Массив был пуст. Задайте количество столбцов", 1, 10);
                 newMatrix = CreateRandomMatrix(newRows, newCols);
             }
-                
-            
+
+
             return newMatrix;
 
         }
-        
+        public static int[,] AddKMoreFromInput(int[,] matrix)
+        {
+            //Обязательно поменяй чтобы не 10 было а 10-длина
+            int[,] newMatrix = null;
+            int newCols = 0;
+            int newRows = 0;
+            if (matrix.GetLength(0) > 9)
+            {
+                Console.WriteLine("В матрицу нельзя добавить больше строк");
+                return matrix;
+            }
+            if (!IsMatrixEmpty(matrix))//Проверку на переполнение перед добавлением в массив
+            {
+                int K = ReadIntAndCheckDiapason($"Введите кол-во строк на добавление(от 1 до {10 - (matrix.GetLength(0))})", 1, 10 - (matrix.GetLength(0)));// поменять matrix.Length на getlenth
+                newRows = matrix.GetLength(0) + K;
+                newCols = matrix.GetLength(1);
+                newMatrix = new int[newRows, newCols];
+                for (int i = 0; i < K; i++)
+                    for (int j = 0; j < newCols; j++)
+                    {
+                        newMatrix[i, j] = ReadIntAndCheckDiapason($"Введите [{i};{j}] элемент массива (целое от -100 до 100)", -100, 100);
+                    }
+                for (int i = 0; i < matrix.GetLength(0); i++)
+                {
+                    for (int j = 0; j < newCols; j++)
+                        newMatrix[i + K, j] = matrix[i, j];
+                }
+            }
+
+            else
+            {
+                int K = ReadIntAndCheckDiapason($"Введите кол-во строк на добавление(от 1 до {10})", 1, 10);
+                newRows = K;
+                newCols = ReadIntAndCheckDiapason("Массив был пуст. Задайте количество столбцов", 1, 10);
+                newMatrix = CreateMatrixFromInput(newRows, newCols);
+            }
+
+
+            return newMatrix;
+
+        }
+
         #endregion
+        #region Действия с рваными массивами
         static bool IsArrayEmpty(int[][] array)
         {
             return array is null || array.Length == 0;
@@ -169,7 +226,7 @@ namespace _5Laba
             }
             return array;
         }
-        
+
         public static int[][] RemoveRow(int[][] array)
         {
 
@@ -180,15 +237,80 @@ namespace _5Laba
             int k = 0;
             for (int i = 0; i < array.Length; i++)
             {
-                if (i != rowNumberToRemove - 1) 
+                if (i != rowNumberToRemove - 1)
                 {
-                    newArray[k++] = array[i];
+                    newArray[k] = new int[array[i].Length];
+                    for (int j = 0; j < array[i].Length; j++)
+                    {
+                        int elem = array[i][j];
+                        newArray[k][j] = elem;
+                    }
+                    k++;
+                }
+            }
+            //array[1][1] = 100;
+            return newArray;
+        }
+        #endregion
+        #region Действия со строками
+        static string NormalizeString(string input)
+        {
+            input = Regex.Replace(input, @"\s+([?!.,;:])", "$1");
+            input = Regex.Replace(input, @"([.?!,;:\s])\1+", "$1");
+            input = Regex.Replace(input, @"([?!.,;:])(?!\s)", "$1 ");
+            string[] sentenceArray = Regex.Split(input, @"(?<=[.!?])\s*");
+            string processedText = "";
+
+            foreach (string sentence in sentenceArray)
+            {
+                if (sentence.Length > 0)
+                {
+                    string firstLetter = sentence.Substring(0, 1).ToUpper();
+                    string restOfSentence = sentence.Substring(1).ToLower();
+                    processedText += firstLetter + restOfSentence + " ";
                 }
             }
 
-            return newArray;
+            return processedText.Trim();
+        }
+        static string ReverseWord(string word)
+        {
+            if (string.IsNullOrEmpty(word))
+            {
+                return word;
+            }
+
+            char[] charArray = word.ToCharArray();
+            Array.Reverse(charArray);
+            return new string(charArray);
+        }
+        static bool CheckInput(string input)
+        {
+            return Regex.IsMatch(input, @"^[а-яА-Я0-9a-zA-Z,;:\!?.\s]+$") && "?!.".Contains(input[input.Length - 1]);
+        }
+        static string ReadStringAndCheck(string message)
+        {
+            Console.WriteLine(message);
+
+            bool isTrue = false;
+            string sentences;
+            do
+            {
+                sentences = Console.ReadLine();
+                sentences = NormalizeString(sentences);
+                if (!CheckInput(sentences) || string.IsNullOrEmpty(sentences) || "?!.;:,".Contains(sentences[0]) || sentences.Length > 1000)
+                {
+                    Console.WriteLine("Неправильный ввод строки. Повторите ввод:");
+                }
+                else isTrue = true;
+
+            } while (!isTrue);
+            return sentences;
         }
 
+
+
+        #endregion
         static void Main(string[] args)
         {
             #region Menu
@@ -201,8 +323,9 @@ namespace _5Laba
                 Console.WriteLine("Меню");
                 Console.WriteLine("1. Действия с матрицами");
                 Console.WriteLine("2. Действия с рваными массивами");
-                Console.WriteLine("3. Выход");
-                int MenuOption = ReadIntAndCheckDiapason("Введите пункт в меню", 1, 3);
+                Console.WriteLine("3. Действия со строкой");
+                Console.WriteLine("4. Выход");
+                int MenuOption = ReadIntAndCheckDiapason("Введите пункт в меню", 1, 4);
                 switch (MenuOption)
                 {
                     #region Работа с двумерными массивами
@@ -238,7 +361,18 @@ namespace _5Laba
                                     PrintMatrix(matrix);
                                     break;
                                 case 3:
-                                    matrix = AddKMoreRandomly(matrix);
+                                    Console.WriteLine("1. С помощью ДЧС");
+                                    Console.WriteLine("2. С клавиатуры");
+                                    SubMenuOption = ReadIntAndCheckDiapason("Введите желаемое действие", 1, 2);
+                                    switch (SubMenuOption)
+                                    {
+                                        case 1:
+                                            matrix = AddKMoreRandomly(matrix);
+                                            break;
+                                        case 2:
+                                            matrix = AddKMoreFromInput(matrix);
+                                            break;
+                                    }
                                     break;
 
                             }
@@ -292,7 +426,7 @@ namespace _5Laba
                                     {
                                         //int RowToRemove = ReadIntAndCheckDiapason("Введите номер строки на удаление (нумерация с 1)", 1, ragArray.Length + 1);
                                         int RowToRemove = 0;
-                                        ragArray = RemoveRow(ragArray);
+                                        ragArray = RemoveRow(ragArray);// Если тут две переменные, то будет ссылка на другой массив
                                     }
 
                                     break;
@@ -304,11 +438,108 @@ namespace _5Laba
                             Console.WriteLine("3. Удалить строку с заданным номером");
                             Console.WriteLine("4. Назад");
                             SubMenuOption = ReadIntAndCheckDiapason("Введите желаемое действие", 1, 4);
+
                         }
                         Console.Clear();
                         break;
                     #endregion
                     case 3:
+                        string CurString = "";
+                        Console.WriteLine("1. Сформировать строку");
+                        Console.WriteLine("2. Перевернуть слова");
+                        Console.WriteLine("3. Вывести строку");
+                        Console.WriteLine("4. Назад");
+                        SubMenuOption = ReadIntAndCheckDiapason("Введите желаемое действие", 1, 4);
+                        while (SubMenuOption != 4)
+                        {
+                            switch (SubMenuOption)
+                            {
+                                case 1:
+                                    {
+                                        Console.WriteLine("1. Тествоый вариант");
+                                        Console.WriteLine("2. Ввод с клавиатуры");
+                                        int WayOfCreation = ReadIntAndCheckDiapason("Введите способ формирования строки", 1, 2);
+                                        switch (WayOfCreation)
+                                        {
+                                            case 1:
+                                                CurString = "В лесу родилась елка! В лесу она росла. Зимой и летом была стройная, зеленая!";
+                                                break;
+                                            case 2:
+                                                CurString = ReadStringAndCheck("Введите строку");
+                                                break;
+                                        }
+                                        break;
+                                    }
+                                case 2:
+                                    {
+                                        if (CurString != "" || CurString != null)
+                                        {
+                                            string Test = CurString;
+                                            string curWord = "";
+                                            string curSentence = "";
+                                            string Finalsentence = "";
+                                            int letterCount = 0;
+                                            int wordNumber = 0;
+                                            for (int i = 0; i < Test.Length; i++)
+                                            {
+
+                                                string CurLetter = Test[i].ToString();
+
+                                                if (" :;,".Contains(CurLetter))
+                                                {
+                                                    if (!(":;,".Contains(Test[i - 1]))) wordNumber++;
+                                                    Console.WriteLine(wordNumber);
+                                                    if (wordNumber == letterCount)
+                                                    {
+                                                        curWord = ReverseWord(curWord);
+                                                    }
+                                                    letterCount = 0;
+                                                    curWord = curWord + CurLetter;
+                                                    curSentence += curWord;
+                                                    curWord = "";
+                                                }
+                                                else if (" .!?".Contains(CurLetter))
+                                                {
+                                                    wordNumber++;
+                                                    if (wordNumber == letterCount)
+                                                    {
+                                                        curWord = ReverseWord(curWord);
+                                                    }
+                                                    letterCount = 0;
+                                                    curWord = curWord + CurLetter;
+                                                    curSentence += curWord;
+                                                    curWord = "";
+                                                    wordNumber = -1;
+                                                    Finalsentence = curSentence;
+                                                }
+                                                else
+                                                {
+                                                    letterCount = letterCount + 1;
+                                                    curWord += CurLetter;
+                                                }
+                                                CurString = Finalsentence;
+                                            }
+                                        }
+                                        else Console.WriteLine("Строка не задана");
+                                        break;
+                                    }
+                                case 3:
+                                    if (String.IsNullOrEmpty(CurString))
+                                    {
+                                        Console.WriteLine("Строка пуста");
+                                    }
+                                    else Console.WriteLine(CurString);
+                                    break;
+                            }
+                            Console.WriteLine(" ");
+                            Console.WriteLine("1. Сформировать строку");
+                            Console.WriteLine("2. Перевернуть слова");
+                            Console.WriteLine("3. Вывести строку");
+                            Console.WriteLine("4. Назад");
+                            SubMenuOption = ReadIntAndCheckDiapason("Введите желаемое действие", 1, 4);
+                        }
+                        break;
+                    case 4:
                         exit = true;
                         break;
                 }
